@@ -2,7 +2,7 @@
 
 """ This script aims to automate the process of starting frida-server
 on an Android device (for now). The script is a part of AndroidTamer
-project and is based on this issue: 
+project and is based on this issue:
 https://github.com/AndroidTamer/Tools_Repository/issues/234.
 
 This script performs following things:
@@ -101,7 +101,7 @@ def prepare_download_url(arch):
 
 
 def download_and_extract(url, fname, force_download=False):
-    """ This function downloads the given URL, extracts .xz archive 
+    """ This function downloads the given URL, extracts .xz archive
     as given file name.
 
     :returns True if successful, else False.
@@ -146,17 +146,20 @@ def download_and_extract(url, fname, force_download=False):
 
 def push_and_execute(fname, transport_id=None):
     """This function pushes the file to device, makes it executable,
-    and then finally runs the binary. The function also saves the PID 
+    and then finally runs the binary. The function also saves the PID
     of process in 'frida.pid' file.
     """
 
     fname = path.join(DOWNLOAD_PATH, fname)
 
-    push_cmd = [ADB_PATH, "-t", transport_id, "push", fname, "/data/local/tmp/frida-server"]
-    chmod_cmd = [ADB_PATH, "-t", transport_id, "shell", "chmod 0755 /data/local/tmp/frida-server"]
+    mkdir_cmd = [ADB_PATH, "-t", transport_id, "shell", "mkdir", "/data/local/tmp/re.frida.server/"]
+    push_cmd = [ADB_PATH, "-t", transport_id, "push", fname, "/data/local/tmp/re.frida.server/frida-server-32"]
+    chmod_cmd = [ADB_PATH, "-t", transport_id, "shell", "chmod 0755 /data/local/tmp/re.frida.server/frida-server-32"]
+    ln_cmd = [ADB_PATH, "-t", transport_id, "shell", "ln", "-s", "/data/local/tmp/re.frida.server/frida-server-32", "/data/local/tmp/frida-server"]
     kill_cmd = [ADB_PATH, "-t", transport_id, "shell", "su", "-c", "killall", "frida-server"]
     execute_cmd = [ADB_PATH, "-t", transport_id, "shell", "su", "-c", "/data/local/tmp/frida-server"]
 
+    res = subprocess.Popen(mkdir_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait
     res = subprocess.Popen(push_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     res.wait()
 
@@ -166,6 +169,9 @@ def push_and_execute(fname, transport_id=None):
 
     log.info("File pushed to device successfully.")
     subprocess.Popen(chmod_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
+
+    log.info("Creating link to /data/local/tmp/frida-server")
+    subprocess.Popen(ln_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
 
     log.info("Killing all frida-server on device.")
     subprocess.Popen(kill_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
