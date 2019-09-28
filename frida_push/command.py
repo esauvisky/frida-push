@@ -156,6 +156,7 @@ def push_and_execute(fname, transport_id=None, push_to_bin=False):
     if push_to_bin:
         target = "/system/bin/frida-server"
 
+    cleanup_cmd = [ADB_PATH, "-t", transport_id, "shell", "su", "-c", "rm", "-r", "/data/local/tmp/frida*", "/data/local/tmp/re.frida.server"]
     mkdir_cmd = [ADB_PATH, "-t", transport_id, "shell", "mkdir", "/data/local/tmp/re.frida.server/"]
     push_cmd = [ADB_PATH, "-t", transport_id, "push", fname, "/data/local/tmp/re.frida.server/frida-server-32"]
     chmod_cmd = [ADB_PATH, "-t", transport_id, "shell", "chmod 0755 /data/local/tmp/re.frida.server/frida-server-32"]
@@ -163,6 +164,7 @@ def push_and_execute(fname, transport_id=None, push_to_bin=False):
     kill_cmd = [ADB_PATH, "-t", transport_id, "shell", "su", "-c", "killall", "frida-server"]
     execute_cmd = [ADB_PATH, "-t", transport_id, "shell", "su", "-c", target]
 
+    res = subprocess.Popen(cleanup_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait
     res = subprocess.Popen(mkdir_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait
     res = subprocess.Popen(push_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     res.wait()
