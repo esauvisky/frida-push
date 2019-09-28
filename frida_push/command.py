@@ -144,7 +144,7 @@ def download_and_extract(url, fname, force_download=False):
     return False
 
 
-def push_and_execute(fname, transport_id=None):
+def push_and_execute(fname, transport_id=None, push_to_bin=False):
     """This function pushes the file to device, makes it executable,
     and then finally runs the binary. The function also saves the PID
     of process in 'frida.pid' file.
@@ -152,12 +152,16 @@ def push_and_execute(fname, transport_id=None):
 
     fname = path.join(DOWNLOAD_PATH, fname)
 
+    target = "/data/local/tmp/frida-server"
+    if push_to_bin:
+        target = "/system/bin/frida-server"
+
     mkdir_cmd = [ADB_PATH, "-t", transport_id, "shell", "mkdir", "/data/local/tmp/re.frida.server/"]
     push_cmd = [ADB_PATH, "-t", transport_id, "push", fname, "/data/local/tmp/re.frida.server/frida-server-32"]
     chmod_cmd = [ADB_PATH, "-t", transport_id, "shell", "chmod 0755 /data/local/tmp/re.frida.server/frida-server-32"]
-    ln_cmd = [ADB_PATH, "-t", transport_id, "shell", "ln", "-s", "/data/local/tmp/re.frida.server/frida-server-32", "/data/local/tmp/frida-server"]
+    ln_cmd = [ADB_PATH, "-t", transport_id, "shell", "su", "-c", "ln", "-s", "/data/local/tmp/re.frida.server/frida-server-32", target]
     kill_cmd = [ADB_PATH, "-t", transport_id, "shell", "su", "-c", "killall", "frida-server"]
-    execute_cmd = [ADB_PATH, "-t", transport_id, "shell", "su", "-c", "/data/local/tmp/frida-server"]
+    execute_cmd = [ADB_PATH, "-t", transport_id, "shell", "su", "-c", target]
 
     res = subprocess.Popen(mkdir_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait
     res = subprocess.Popen(push_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -170,7 +174,7 @@ def push_and_execute(fname, transport_id=None):
     log.info("File pushed to device successfully.")
     subprocess.Popen(chmod_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
 
-    log.info("Creating link to /data/local/tmp/frida-server")
+    log.info("Creating link to %s", target)
     subprocess.Popen(ln_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
 
     log.info("Killing all frida-server on device.")
@@ -194,6 +198,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--device-name', required=False)
     parser.add_argument('-f', '--force', help="force download", action="store_true", default=False)
+    parser.add_argument('-b', '--bin', help="install on /system/bin/ instead of /data/local/tmp", action="store_true", default=False)
     parser.add_argument('--version', action="version", version=__version__)
     ops = parser.parse_args()
 
@@ -222,7 +227,7 @@ def main():
         url = prepare_download_url(arch)
         fname = "frida-server-{}-android-{}".format(FRIDA_VERSION, arch)
         if download_and_extract(url, fname, ops.force):
-            push_and_execute(fname, transport_id=transport_id)
+            push_and_execute(fname, transport_id=transport_id, push_to_bin=ops.bin)
     else:
         log.info("Could not determine device's arch. Exiting.")
 
